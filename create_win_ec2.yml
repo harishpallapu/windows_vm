@@ -1,0 +1,48 @@
+---
+- name: Create EC2 Windows instance on AWS
+  hosts: all
+  connection: local
+  gather_facts: False
+  vars:
+    instance_type: t2.micro
+    image: ami-074953eb5d1b89add
+    region: ap-south-1
+    username: administrator
+    password: Ansible123
+    security_group_name: EC2WindowsInstanceSG
+    security_group_rules:
+      - proto: tcp
+        from_port: 3389
+        to_port: 3389
+        cidr_ip: 0.0.0.0/0
+  tasks:
+    - name: Create a security group
+      ec2_group:
+         name: "{{ security_group_name }}"
+         description: Security group for EC2 Windows instance
+         region: "{{ region }}"
+         rules: "{{ security_group_rules }}"
+         state: present
+
+    - name: Launch EC2 Windows instance
+      ec2:
+       instance_type: "{{ instance_type }}"
+       image: "{{ image }}"
+       region: "{{ region }}"
+       key_name: None
+       wait: yes
+       vpc_subnet_id: subnet-0123456789abcdef0
+       group_id: "{{ security_group_name }}"
+       instance_tags:
+         Name: EC2WindowsInstance
+       assign_public_ip: yes
+       wait_timeout: 500
+       count: 1
+      register: ec2
+
+    - name:  Windows insta
+      ansible.windows.win_user:
+       name: "{{ username }}"
+       password: "{{ password }}"
+       update_password: on_create
+      with_items: "{{ ec2.instances }}"
